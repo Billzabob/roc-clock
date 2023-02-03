@@ -194,6 +194,7 @@ dependencies = [
  "libc",
  "reqwest",
  "roc_std",
+ "rppal",
 ]
 
 [[package]]
@@ -478,6 +479,15 @@ source = "git+https://github.com/roc-lang/roc?rev=46d69e8#46d69e87218c6c5a26fd5d
 dependencies = [
  "arrayvec",
  "static_assertions",
+]
+
+[[package]]
+name = "rppal"
+version = "0.14.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "612e1a22e21f08a246657c6433fe52b773ae43d07c9ef88ccfc433cc8683caba"
+dependencies = [
+ "libc",
 ]
 
 [[package]]

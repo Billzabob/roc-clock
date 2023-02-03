@@ -12,6 +12,10 @@ name = "host"
 path = "src/lib.rs"
 crate-type = ["staticlib", "rlib"]
 
+[profile.dev]
+debug = 0
+strip = "symbols"
+
 [[bin]]
 name = "host"
 path = "src/main.rs"
@@ -21,5 +25,6 @@ roc_std = { git = "https://github.com/roc-lang/roc", rev = "46d69e8" }
 libc = "0.2"
 backtrace = "0.3"
 reqwest = { version="0.11.11", default-features=false, features=["blocking", "rustls-tls"] }
+rppal = "0.14.1"
 
 [workspace]

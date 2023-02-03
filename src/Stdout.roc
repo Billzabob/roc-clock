@@ -1,5 +1,5 @@
 interface Stdout
-    exposes [line, write]
+    exposes [line, write, setPinHigh, setPinLow]
     imports [Effect, Task.{ Task }, InternalTask]
 
 ## Write the given string to [standard output](https://en.wikipedia.org/wiki/Standard_streams#Standard_output_(stdout)),
@@ -21,5 +21,17 @@ line = \str ->
 write : Str -> Task {} *
 write = \str ->
     Effect.stdoutWrite str
+    |> Effect.map (\_ -> Ok {})
+    |> InternalTask.fromEffect
+
+setPinHigh : U8 -> Task {} *
+setPinHigh = \pin ->
+    Effect.setPinHigh pin
+    |> Effect.map (\_ -> Ok {})
+    |> InternalTask.fromEffect
+
+setPinLow : U8 -> Task {} *
+setPinLow = \pin ->
+    Effect.setPinHigh pin
     |> Effect.map (\_ -> Ok {})
     |> InternalTask.fromEffect

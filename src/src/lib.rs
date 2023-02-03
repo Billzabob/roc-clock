@@ -283,6 +283,42 @@ pub extern "C" fn roc_fx_setCwd(roc_path: &RocList<u8>) -> RocResult<(), ()> {
 }
 
 #[no_mangle]
+pub extern "C" fn roc_fx_setPinHigh(pin: u8) -> RocResult<(), ()> {
+    use rppal::gpio::Gpio;
+
+    let mut pin = match Gpio::new() {
+        Ok(gpio) =>
+            match gpio.get(pin) {
+                Ok(p) => p.into_output(),
+                _ => return RocResult::err(()),
+            },
+        _ =>
+            return RocResult::err(()),
+    };
+
+    pin.set_high();
+    RocResult::ok(())
+}
+
+#[no_mangle]
+pub extern "C" fn roc_fx_setPinLow(pin: u8) -> RocResult<(), ()> {
+    use rppal::gpio::Gpio;
+
+    let mut pin = match Gpio::new() {
+        Ok(gpio) =>
+            match gpio.get(pin) {
+                Ok(p) => p.into_output(),
+                _ => return RocResult::err(()),
+            },
+        _ =>
+            return RocResult::err(()),
+    };
+
+    pin.set_low();
+    RocResult::ok(())
+}
+
+#[no_mangle]
 pub extern "C" fn roc_fx_processExit(exit_code: u8) {
     std::process::exit(exit_code as i32);
 }

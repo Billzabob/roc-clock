@@ -12,6 +12,8 @@ hosted Effect
         envVar,
         cwd,
         setCwd,
+        setPinHigh,
+        setPinLow,
         exePath,
         stdoutLine,
         stdoutWrite,
@@ -27,6 +29,9 @@ hosted Effect
     ]
     imports [InternalHttp.{ Request, Response }, InternalFile, InternalDir]
     generates Effect with [after, map, always, forever, loop]
+
+setPinHigh : U8 -> Effect {}
+setPinLow : U8 -> Effect {}
 
 stdoutLine : Str -> Effect {}
 stdoutWrite : Str -> Effect {}
