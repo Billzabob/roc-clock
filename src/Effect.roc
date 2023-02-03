@@ -30,9 +30,6 @@ hosted Effect
     imports [InternalHttp.{ Request, Response }, InternalFile, InternalDir]
     generates Effect with [after, map, always, forever, loop]
 
-setPinHigh : U8 -> Effect {}
-setPinLow : U8 -> Effect {}
-
 stdoutLine : Str -> Effect {}
 stdoutWrite : Str -> Effect {}
 stderrLine : Str -> Effect {}
@@ -48,6 +45,9 @@ envDict : Effect (Dict Str Str)
 envVar : Str -> Effect (Result Str {})
 exePath : Effect (Result (List U8) {})
 setCwd : List U8 -> Effect (Result {} {})
+
+setPinHigh : U8 -> Effect (Result {} {})
+setPinLow : U8 -> Effect (Result {} {})
 
 processExit : U8 -> Effect {}
 

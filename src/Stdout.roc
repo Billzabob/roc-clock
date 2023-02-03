@@ -24,14 +24,14 @@ write = \str ->
     |> Effect.map (\_ -> Ok {})
     |> InternalTask.fromEffect
 
-setPinHigh : U8 -> Task {} *
-setPinHigh = \pin ->
-    Effect.setPinHigh pin
-    |> Effect.map (\_ -> Ok {})
+setPinLow : U8 -> Task {} [GpioFailure]
+setPinLow = \pin ->
+    Effect.setPinLow pin
+    |> Effect.map (\result -> Result.mapErr result \{} -> GpioFailure)
     |> InternalTask.fromEffect
 
-setPinLow : U8 -> Task {} *
-setPinLow = \pin ->
+setPinHigh : U8 -> Task {} [GpioFailure]
+setPinHigh = \pin ->
     Effect.setPinHigh pin
-    |> Effect.map (\_ -> Ok {})
+    |> Effect.map (\result -> Result.mapErr result \{} -> GpioFailure)
     |> InternalTask.fromEffect

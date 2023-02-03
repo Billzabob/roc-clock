@@ -292,10 +292,10 @@ pub extern "C" fn roc_fx_setPinHigh(pin: u8) -> RocResult<(), ()> {
                 Ok(p) => p.into_output(),
                 _ => return RocResult::err(()),
             },
-        _ =>
-            return RocResult::err(()),
+        _ => return RocResult::err(()),
     };
 
+    println!("setting high");
     pin.set_high();
     RocResult::ok(())
 }
@@ -314,6 +314,7 @@ pub extern "C" fn roc_fx_setPinLow(pin: u8) -> RocResult<(), ()> {
             return RocResult::err(()),
     };
 
+    println!("setting low");
     pin.set_low();
     RocResult::ok(())
 }
