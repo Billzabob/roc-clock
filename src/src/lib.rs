@@ -283,6 +283,12 @@ pub extern "C" fn roc_fx_setCwd(roc_path: &RocList<u8>) -> RocResult<(), ()> {
 }
 
 #[no_mangle]
+pub extern "C" fn roc_fx_sleep(duration: u64) {
+    use std::thread;
+    thread::sleep(Duration::from_millis(duration));
+}
+
+#[no_mangle]
 pub extern "C" fn roc_fx_setPinHigh(pin: u8) -> RocResult<(), ()> {
     use rppal::gpio::Gpio;
 
@@ -292,10 +298,12 @@ pub extern "C" fn roc_fx_setPinHigh(pin: u8) -> RocResult<(), ()> {
                 Ok(p) => p.into_output(),
                 _ => return RocResult::err(()),
             },
-        _ => return RocResult::err(()),
-    };
+        _ =>
+            return RocResult::err(()),
+        };
 
     println!("setting high");
+    pin.set_reset_on_drop(false);
     pin.set_high();
     RocResult::ok(())
 }
@@ -312,9 +320,10 @@ pub extern "C" fn roc_fx_setPinLow(pin: u8) -> RocResult<(), ()> {
             },
         _ =>
             return RocResult::err(()),
-    };
+        };
 
     println!("setting low");
+    pin.set_reset_on_drop(false);
     pin.set_low();
     RocResult::ok(())
 }

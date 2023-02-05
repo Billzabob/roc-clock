@@ -1,5 +1,5 @@
 interface Stdout
-    exposes [line, write, setPinHigh, setPinLow]
+    exposes [line, write]
     imports [Effect, Task.{ Task }, InternalTask]
 
 ## Write the given string to [standard output](https://en.wikipedia.org/wiki/Standard_streams#Standard_output_(stdout)),
@@ -24,14 +24,3 @@ write = \str ->
     |> Effect.map (\_ -> Ok {})
     |> InternalTask.fromEffect
 
-setPinLow : U8 -> Task {} [GpioFailure]
-setPinLow = \pin ->
-    Effect.setPinLow pin
-    |> Effect.map (\result -> Result.mapErr result \{} -> GpioFailure)
-    |> InternalTask.fromEffect
-
-setPinHigh : U8 -> Task {} [GpioFailure]
-setPinHigh = \pin ->
-    Effect.setPinHigh pin
-    |> Effect.map (\result -> Result.mapErr result \{} -> GpioFailure)
-    |> InternalTask.fromEffect

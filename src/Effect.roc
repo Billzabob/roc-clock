@@ -14,6 +14,7 @@ hosted Effect
         setCwd,
         setPinHigh,
         setPinLow,
+        sleep,
         exePath,
         stdoutLine,
         stdoutWrite,
@@ -46,6 +47,7 @@ envVar : Str -> Effect (Result Str {})
 exePath : Effect (Result (List U8) {})
 setCwd : List U8 -> Effect (Result {} {})
 
+sleep : U64 -> Effect {}
 setPinHigh : U8 -> Effect (Result {} {})
 setPinLow : U8 -> Effect (Result {} {})
 
