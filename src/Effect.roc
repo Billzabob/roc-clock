@@ -14,6 +14,7 @@ hosted Effect
         setCwd,
         setPinHigh,
         setPinLow,
+        pwm,
         sleep,
         exePath,
         stdoutLine,
@@ -50,6 +51,7 @@ setCwd : List U8 -> Effect (Result {} {})
 sleep : U64 -> Effect {}
 setPinHigh : U8 -> Effect (Result {} {})
 setPinLow : U8 -> Effect (Result {} {})
+pwm : F64, F64 -> Effect (Result {} {})
 
 processExit : U8 -> Effect {}
 

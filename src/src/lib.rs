@@ -302,7 +302,6 @@ pub extern "C" fn roc_fx_setPinHigh(pin: u8) -> RocResult<(), ()> {
             return RocResult::err(()),
         };
 
-    println!("setting high");
     pin.set_reset_on_drop(false);
     pin.set_high();
     RocResult::ok(())
@@ -322,9 +321,23 @@ pub extern "C" fn roc_fx_setPinLow(pin: u8) -> RocResult<(), ()> {
             return RocResult::err(()),
         };
 
-    println!("setting low");
     pin.set_reset_on_drop(false);
     pin.set_low();
+    RocResult::ok(())
+}
+
+#[no_mangle]
+pub extern "C" fn roc_fx_pwm(frequency: f64, duty_cycle: f64) -> RocResult<(), ()> {
+    use rppal::pwm::Pwm;
+    use rppal::pwm::Channel;
+    use rppal::pwm::Polarity;
+
+    let mut pwm = match Pwm::with_frequency(Channel::Pwm0, frequency, duty_cycle, Polarity::Normal, true) {
+        Ok(pwm) => pwm,
+        _ => return RocResult::err(()),
+    };
+
+    pwm.set_reset_on_drop(false);
     RocResult::ok(())
 }
 
