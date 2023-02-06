@@ -342,6 +342,25 @@ pub extern "C" fn roc_fx_pwm(frequency: f64, duty_cycle: f64) -> RocResult<(), (
 }
 
 #[no_mangle]
+pub extern "C" fn roc_fx_i2c_write_byte(address: u16, byte: u8) -> RocResult<(), ()> {
+    use rppal::i2c::I2c;
+
+    match I2c::new() {
+        Ok(mut i2c) => match i2c.set_slave_address(address) {
+            Ok(_) => {
+                let data = [byte];
+                i2c.write(&data)
+            },
+            _ =>
+                return RocResult::err(()),
+        },
+        _ => return RocResult::err(()),
+    };
+
+    RocResult::ok(())
+}
+
+#[no_mangle]
 pub extern "C" fn roc_fx_processExit(exit_code: u8) {
     std::process::exit(exit_code as i32);
 }

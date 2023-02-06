@@ -21,9 +21,11 @@ setRotation =
         Ok rotationAmount ->
             dutyCycle = map rotationAmount 0 180 0.05 0.1
             str = Num.toStr dutyCycle
-            _ <- Task.await (Stdout.line "Duty cycle is: \(str).\n")
-            Gpio.pwm frequency dutyCycle
-        _ ->
+            result <- Task.attempt (Gpio.pwm frequency dutyCycle)
+            when result is
+                Ok {} -> Stdout.line "Duty cycle is: \(str).\n"
+                Err PwmFailure -> Stdout.line "Failed to set PWM"
+        Err InvalidNumStr ->
             Stdout.line "Duty cycle is invalid. Try again.\n"
 
 map = \value, inMin, inMax, outMin, outMax -> (value - inMin) * (outMax - outMin) / (inMax - inMin) + outMin

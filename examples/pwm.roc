@@ -20,9 +20,11 @@ setPwm =
     when dutyCycleResult is
         Ok dutyCycle ->
             str = Num.toStr dutyCycle
-            _ <- Task.await (Stdout.line "Duty cycle is: \(str).\n")
-            Gpio.pwm frequency dutyCycle
-        _ ->
+            result <- Task.attempt (Gpio.pwm frequency dutyCycle)
+            when result is
+                Ok {}          -> Stdout.line "Duty cycle is: \(str).\n"
+                Err PwmFailure -> Stdout.line "Failed to set PWM" 
+        Err InvalidNumStr ->
             Stdout.line "Duty cycle is invalid. Try again.\n"
     
 

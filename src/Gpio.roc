@@ -20,8 +20,8 @@ sleep = \duration ->
     |> Effect.map (\_ -> Ok {})
     |> InternalTask.fromEffect
 
-pwm : F64, F64 -> Task {} *
+pwm : F64, F64 -> Task {} [PwmFailure]
 pwm = \frequency, dutyCycle ->
     Effect.pwm frequency dutyCycle
-    |> Effect.map (\_ -> Ok {})
+    |> Effect.map (\result -> Result.mapErr result \{} -> PwmFailure)
     |> InternalTask.fromEffect
