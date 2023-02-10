@@ -1,35 +1,35 @@
 app "i2c"
     packages { pf: "../src/main.roc" }
-    imports [pf.Gpio, pf.Stdout, pf.I2c, pf.Task.{ Task, await }]
+    imports [pf.Gpio, pf.Stdout, pf.Stdin, pf.I2c, pf.Task.{ Task, await }]
     provides [main] to pf
 
-address = 0x0040
-mode1 = 0
+address  = 0x0040
+mode1    = 0
 prescale = 254
 sleepBit = 0x10
-# led0OnL = 6
-# led0OnH = 7
-led0OffL = 8
-led0OffH = 9
 
-main : Task {} []
 main =
-    result <- Task.attempt run
-    when result is
-        Ok _ -> Stdout.line "Success"
-        Err _ -> Stdout.line "Failure"
+    _ <- Task.attempt init
+    Task.forever (Task.attempt run \_ -> Task.succeed {})
+
+init =
+    _ <- await (reset)
+    # About 50 Hz
+    setPrescale 121
 
 run =
-    _ <- await (readAndPrint prescale)
-    _ <- await (reset)
-    _ <- await (Gpio.sleep 5)
-    _ <- await (readAndPrint prescale)
-    _ <- await (setPrescale 121)
-    _ <- await (readAndPrint prescale)
-    _ <- await (writeRegister led0OffL 51)
-    _ <- await (writeRegister led0OffH 1)
-    _ <- await (readAndPrint 8)
-    _ <- await (readAndPrint 9)
+    _      <- await (Stdout.line "Enter the rotation amount (0 to 180):")
+    amount <- await Stdin.line
+    angle  <- await (Task.fromResult (Str.toF64 amount))
+    setServoAngle 0 angle
+
+setServoAngle = \servo, angle ->
+    register = 4 * servo + 8
+    count = map angle 0 180 145 500 |> Num.floor
+    low = Num.bitwiseAnd count 0xff |> Num.toU8
+    high = Num.shiftRightZfBy count 8 |> Num.toU8
+    _ <- await (writeRegister register low)
+    _ <- await (writeRegister (register + 1) high)
     Task.succeed {}
 
 setPrescale = \value ->
@@ -39,20 +39,12 @@ setPrescale = \value ->
     Gpio.sleep 5
 
 readRegister = \register ->
-    _ <- await (I2c.writeBytes address [register])
+    _     <- await (I2c.writeBytes address [register])
     bytes <- await (I2c.readBytes address 1)
     Task.fromResult (List.get bytes 0)
 
 writeRegister = \register, value ->
     I2c.writeBytes address [register, value]
-    
-
-readAndPrint = \register ->
-    byte <- await (readRegister register)
-    str = Num.toStr byte
-    Stdout.line str
-
-reset = I2c.writeBytes 0 [0x06]
 
 sleep =
     oldMode <- await (readRegister mode1)
@@ -65,4 +57,8 @@ wakeup =
     writeRegister mode1 newMode
 
 bitwiseNot = \bits -> Num.bitwiseXor 0xff bits
+
+reset = I2c.writeBytes 0 [0x06]
+
+map = \value, inMin, inMax, outMin, outMax -> (value - inMin) * (outMax - outMin) / (inMax - inMin) + outMin
 
