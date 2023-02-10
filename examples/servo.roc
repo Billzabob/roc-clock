@@ -23,7 +23,7 @@ run =
 
 setRotation : F64 -> Task {} []
 setRotation = \rotationAmount ->
-    dutyCycle = map rotationAmount 0 180 0.05 0.1
+    dutyCycle = map rotationAmount 0 180 0.035 0.12
     str = Num.toStr dutyCycle
     result <- Task.attempt (Gpio.pwm frequency dutyCycle)
     when result is

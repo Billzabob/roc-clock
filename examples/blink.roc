@@ -3,7 +3,7 @@ app "blink"
     imports [pf.Gpio, pf.Task.{ Task }]
     provides [main] to pf
 
-pin = 31
+pin = 18
 
 main : Task {} []
 main = Task.forever blink

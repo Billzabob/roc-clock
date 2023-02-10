@@ -342,22 +342,63 @@ pub extern "C" fn roc_fx_pwm(frequency: f64, duty_cycle: f64) -> RocResult<(), (
 }
 
 #[no_mangle]
-pub extern "C" fn roc_fx_i2c_write_byte(address: u16, byte: u8) -> RocResult<(), ()> {
+pub extern "C" fn roc_fx_writeByte(address: u16, byte: u8) -> RocResult<(), ()> {
     use rppal::i2c::I2c;
 
     match I2c::new() {
         Ok(mut i2c) => match i2c.set_slave_address(address) {
             Ok(_) => {
                 let data = [byte];
-                i2c.write(&data)
+                match i2c.write(&data) {
+                    Ok(_) => (),
+                    Err(e) => {
+                        println!("Failed to write {}", e);
+                        return RocResult::err(())
+                    },
+                }
             },
-            _ =>
-                return RocResult::err(()),
+            Err(e) => {
+                println!("Failed to set address {}", e);
+                return RocResult::err(())
+            },
         },
-        _ => return RocResult::err(()),
+        Err(e) => {
+            println!("Failed to create i2c {}", e);
+            return RocResult::err(())
+        },
     };
 
     RocResult::ok(())
+}
+
+#[no_mangle]
+pub extern "C" fn roc_fx_readByte(address: u16) -> u8 {
+    use rppal::i2c::I2c;
+
+    let mut data = [0, 1];
+
+    match I2c::new() {
+        Ok(mut i2c) => {
+            match i2c.set_slave_address(address) {
+                Ok(_) => {
+                    match i2c.read(&mut data) {
+                        Ok(_) => (),
+                        Err(e) => {
+                            println!("Failed to read {}", e);
+                        },
+                    }
+                },
+                Err(e) => {
+                    println!("Failed to set address {}", e);
+                },
+            }
+        },
+        Err(e) => {
+            println!("Failed to create i2c {}", e);
+        },
+    };
+
+    data[0]
 }
 
 #[no_mangle]
@@ -660,8 +701,8 @@ fn toRocWriteError(err : std::io::Error) -> file_glue::WriteErr {
         // std::io::ErrorKind::InvalidFilename <- unstable language feature 
         // std::io::ErrorKind::ResourceBusy <- unstable language feature 
         // std::io::ErrorKind::ReadOnlyFilesystem <- unstable language feature 
-        // std::io::ErrorKind::TooManyLinks <- unstable language feature 
-        // std::io::ErrorKind::StaleNetworkFileHandle <- unstable language feature 
+        // std::io::ErrorKind::TooManyLinks <- unstable language feature
+        // std::io::ErrorKind::StaleNetworkFileHandle <- unstable language feature
         // std::io::ErrorKind::StorageFull <- unstable language feature
     }
 }
