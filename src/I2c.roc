@@ -1,15 +1,16 @@
 interface I2c
-    exposes [writeByte, readByte]
+    exposes [writeBytes, readBytes]
     imports [Effect, Task.{ Task }, InternalTask]
 
-writeByte : U16, U8 -> Task {} [WriteFailure]
-writeByte = \address, byte ->
-    Effect.writeByte address byte
-    |> Effect.map (\result -> Result.mapErr result \{} -> WriteFailure)
+writeBytes : U16, List U8 -> Task {} *
+writeBytes = \address, bytes ->
+    Effect.writeBytes address bytes
+    |> Effect.map Ok
     |> InternalTask.fromEffect
 
-readByte = \address ->
-    Effect.readByte address
+readBytes : U16, Nat -> Task (List U8) *
+readBytes = \address, size ->
+    Effect.readBytes address size
     |> Effect.map Ok
     |> InternalTask.fromEffect
 

@@ -15,8 +15,8 @@ hosted Effect
         setPinHigh,
         setPinLow,
         pwm,
-        writeByte,
-        readByte,
+        writeBytes,
+        readBytes,
         sleep,
         exePath,
         stdoutLine,
@@ -55,8 +55,8 @@ setPinHigh : U8 -> Effect (Result {} {})
 setPinLow : U8 -> Effect (Result {} {})
 pwm : F64, F64 -> Effect (Result {} {})
 
-writeByte : U16, U8 -> Effect (Result {} {})
-readByte : U16 -> Effect (U8)
+writeBytes : U16, List U8 -> Effect {}
+readBytes : U16, Nat -> Effect (List U8)
 
 processExit : U8 -> Effect {}
 

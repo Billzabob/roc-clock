@@ -342,40 +342,34 @@ pub extern "C" fn roc_fx_pwm(frequency: f64, duty_cycle: f64) -> RocResult<(), (
 }
 
 #[no_mangle]
-pub extern "C" fn roc_fx_writeByte(address: u16, byte: u8) -> RocResult<(), ()> {
+pub extern "C" fn roc_fx_writeBytes(address: u16, bytes: &RocList<u8>) {
     use rppal::i2c::I2c;
 
     match I2c::new() {
         Ok(mut i2c) => match i2c.set_slave_address(address) {
             Ok(_) => {
-                let data = [byte];
-                match i2c.write(&data) {
+                match i2c.write(bytes.as_slice()) {
                     Ok(_) => (),
                     Err(e) => {
                         println!("Failed to write {}", e);
-                        return RocResult::err(())
                     },
                 }
             },
             Err(e) => {
                 println!("Failed to set address {}", e);
-                return RocResult::err(())
             },
         },
         Err(e) => {
             println!("Failed to create i2c {}", e);
-            return RocResult::err(())
         },
     };
-
-    RocResult::ok(())
 }
 
 #[no_mangle]
-pub extern "C" fn roc_fx_readByte(address: u16) -> u8 {
+pub extern "C" fn roc_fx_readBytes(address: u16, length: usize) -> RocList<u8> {
     use rppal::i2c::I2c;
 
-    let mut data = [0, 1];
+    let mut data = vec![0; length];
 
     match I2c::new() {
         Ok(mut i2c) => {
@@ -398,7 +392,7 @@ pub extern "C" fn roc_fx_readByte(address: u16) -> u8 {
         },
     };
 
-    data[0]
+    RocList::from(data.as_slice())
 }
 
 #[no_mangle]
