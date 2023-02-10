@@ -21,7 +21,10 @@ run =
     _      <- await (Stdout.line "Enter the rotation amount (0 to 180):")
     amount <- await Stdin.line
     angle  <- await (Task.fromResult (Str.toF64 amount))
-    setServoAngle 0 angle
+    _      <- await (setServoAngle 0 angle)
+    _      <- await (setServoAngle 1 angle)
+    _      <- await (setServoAngle 2 angle)
+    Task.succeed {}
 
 setServoAngle = \servo, angle ->
     register = 4 * servo + 8
