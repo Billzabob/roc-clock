@@ -24,8 +24,6 @@ setPwm =
 setDutyCycle : F64 -> Task {} []
 setDutyCycle = \dutyCycle ->
     str = Num.toStr dutyCycle
-    result <- Task.attempt (Gpio.pwm frequency dutyCycle)
-    when result is
-        Ok {}          -> Stdout.line "Duty cycle is: \(str).\n"
-        Err PwmFailure -> Stdout.line "Failed to set PWM" 
+    _ <- Task.await (Gpio.pwm frequency dutyCycle)
+    Stdout.line "Duty cycle is: \(str).\n"
 

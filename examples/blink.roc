@@ -10,9 +10,9 @@ main = Task.forever blink
 
 blink : Task {} []
 blink =
-    _ <- Task.attempt (Gpio.setPinHigh pin)
-    _ <- Task.await (Gpio.sleep 1000)
-    _ <- Task.attempt (Gpio.setPinLow pin)
-    _ <- Task.await (Gpio.sleep 1000)
+    _ <- Task.await (Gpio.setPinHigh pin)
+    _ <- Task.await (Task.sleep 1000)
+    _ <- Task.await (Gpio.setPinLow pin)
+    _ <- Task.await (Task.sleep 1000)
     Task.succeed {}
 

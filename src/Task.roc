@@ -1,5 +1,5 @@
 interface Task
-    exposes [Task, succeed, fail, await, map, mapFail, onFail, attempt, forever, loop, fromResult]
+    exposes [Task, sleep, succeed, fail, await, map, mapFail, onFail, attempt, forever, loop, fromResult]
     imports [Effect, InternalTask]
 
 Task ok err : InternalTask.Task ok err
@@ -31,6 +31,12 @@ loop = \state, step ->
                     Err e -> Done (Err e)
 
     Effect.loop state looper
+    |> InternalTask.fromEffect
+
+sleep : U64 -> Task {} *
+sleep = \duration ->
+    Effect.sleep duration
+    |> Effect.map (\_ -> Ok {})
     |> InternalTask.fromEffect
 
 succeed : ok -> Task ok *

@@ -1,22 +1,14 @@
 #![allow(non_snake_case)]
 
-mod file_glue;
 mod glue;
 
 use core::alloc::Layout;
 use core::ffi::c_void;
 use core::mem::MaybeUninit;
 use glue::Metadata;
-use roc_std::{RocDict, RocList, RocResult, RocStr};
-use std::borrow::{Borrow, Cow};
-use std::ffi::{OsStr};
-use std::fs::File;
 use std::io::Write;
-use std::path::Path;
+use roc_std::{RocList, RocStr};
 use std::time::Duration;
-
-use file_glue::ReadErr;
-use file_glue::WriteErr;
 
 extern "C" {
     #[link_name = "roc__mainForHost_1_exposed_generic"]
@@ -245,100 +237,57 @@ unsafe fn call_the_closure(closure_data_ptr: *const u8) -> u8 {
 }
 
 #[no_mangle]
-pub extern "C" fn roc_fx_envDict() -> RocDict<RocStr, RocStr> {
-    // TODO: can we be more efficient about reusing the String's memory for RocStr?
-    std::env::vars_os()
-        .map(|(key, val)| {
-            (
-                RocStr::from(key.to_string_lossy().borrow()),
-                RocStr::from(val.to_string_lossy().borrow()),
-            )
-        })
-        .collect()
-}
-
-#[no_mangle]
-pub extern "C" fn roc_fx_args() -> RocList<RocStr> {
-    // TODO: can we be more efficient about reusing the String's memory for RocStr?
-    std::env::args_os()
-        .map(|os_str| RocStr::from(os_str.to_string_lossy().borrow()))
-        .collect()
-}
-
-#[no_mangle]
-pub extern "C" fn roc_fx_envVar(roc_str: &RocStr) -> RocResult<RocStr, ()> {
-    // TODO: can we be more efficient about reusing the String's memory for RocStr?
-    match std::env::var_os(roc_str.as_str()) {
-        Some(os_str) => RocResult::ok(RocStr::from(os_str.to_string_lossy().borrow())),
-        None => RocResult::err(()),
-    }
-}
-
-#[no_mangle]
-pub extern "C" fn roc_fx_setCwd(roc_path: &RocList<u8>) -> RocResult<(), ()> {
-    match std::env::set_current_dir(path_from_roc_path(roc_path)) {
-        Ok(()) => RocResult::ok(()),
-        Err(_) => RocResult::err(()),
-    }
-}
-
-#[no_mangle]
 pub extern "C" fn roc_fx_sleep(duration: u64) {
     use std::thread;
     thread::sleep(Duration::from_millis(duration));
 }
 
 #[no_mangle]
-pub extern "C" fn roc_fx_setPinHigh(pin: u8) -> RocResult<(), ()> {
+pub extern "C" fn roc_fx_setPinHigh(pin: u8) {
     use rppal::gpio::Gpio;
 
-    let mut pin = match Gpio::new() {
+    match Gpio::new() {
         Ok(gpio) =>
             match gpio.get(pin) {
-                Ok(p) => p.into_output(),
-                _ => return RocResult::err(()),
+                Ok(p) => {
+                    let mut pin = p.into_output();
+                    pin.set_reset_on_drop(false);
+                    pin.set_high();
+                },
+                Err(e) => println!("Failed to get pin {}", e),
             },
-        _ =>
-            return RocResult::err(()),
-        };
-
-    pin.set_reset_on_drop(false);
-    pin.set_high();
-    RocResult::ok(())
+        Err(e) => println!("Failed to access GPIO {}", e),
+    };
 }
 
 #[no_mangle]
-pub extern "C" fn roc_fx_setPinLow(pin: u8) -> RocResult<(), ()> {
+pub extern "C" fn roc_fx_setPinLow(pin: u8) {
     use rppal::gpio::Gpio;
 
-    let mut pin = match Gpio::new() {
+    match Gpio::new() {
         Ok(gpio) =>
             match gpio.get(pin) {
-                Ok(p) => p.into_output(),
-                _ => return RocResult::err(()),
+                Ok(p) => {
+                    let mut pin = p.into_output();
+                    pin.set_reset_on_drop(false);
+                    pin.set_low();
+                },
+                Err(e) => println!("Failed to get pin {}", e),
             },
-        _ =>
-            return RocResult::err(()),
-        };
-
-    pin.set_reset_on_drop(false);
-    pin.set_low();
-    RocResult::ok(())
+        Err(e) => println!("Failed to access GPIO {}", e),
+    };
 }
 
 #[no_mangle]
-pub extern "C" fn roc_fx_pwm(frequency: f64, duty_cycle: f64) -> RocResult<(), ()> {
+pub extern "C" fn roc_fx_pwm(frequency: f64, duty_cycle: f64) {
     use rppal::pwm::Pwm;
     use rppal::pwm::Channel;
     use rppal::pwm::Polarity;
 
-    let mut pwm = match Pwm::with_frequency(Channel::Pwm0, frequency, duty_cycle, Polarity::Normal, true) {
-        Ok(pwm) => pwm,
-        _ => return RocResult::err(()),
+    match Pwm::with_frequency(Channel::Pwm0, frequency, duty_cycle, Polarity::Normal, true) {
+        Ok(mut pwm) => pwm.set_reset_on_drop(false),
+        Err(e) => println!("Failed to set PWM {}", e),
     };
-
-    pwm.set_reset_on_drop(false);
-    RocResult::ok(())
 }
 
 #[no_mangle]
@@ -396,19 +345,6 @@ pub extern "C" fn roc_fx_readBytes(address: u16, length: usize) -> RocList<u8> {
 }
 
 #[no_mangle]
-pub extern "C" fn roc_fx_processExit(exit_code: u8) {
-    std::process::exit(exit_code as i32);
-}
-
-#[no_mangle]
-pub extern "C" fn roc_fx_exePath(_roc_str: &RocStr) -> RocResult<RocList<u8>, ()> {
-    match std::env::current_exe() {
-        Ok(path_buf) => RocResult::ok(os_str_to_roc_path(path_buf.as_path().as_os_str())),
-        Err(_) => RocResult::err(()),
-    }
-}
-
-#[no_mangle]
 pub extern "C" fn roc_fx_stdinLine() -> RocStr {
     use std::io::BufRead;
 
@@ -442,149 +378,6 @@ pub extern "C" fn roc_fx_stderrWrite(text: &RocStr) {
     let string = text.as_str();
     eprint!("{}", string);
     std::io::stderr().flush().unwrap();
-}
-
-// #[no_mangle]
-// pub extern "C" fn roc_fx_fileWriteUtf8(
-//     roc_path: &RocList<u8>,
-//     roc_string: &RocStr,
-//     // ) -> RocResult<(), WriteErr> {
-// ) -> (u8, u8) {
-//     let _ = write_slice(roc_path, roc_string.as_str().as_bytes());
-
-//     (255, 255)
-// }
-
-// #[no_mangle]
-// pub extern "C" fn roc_fx_fileWriteUtf8(roc_path: &RocList<u8>, roc_string: &RocStr) -> Fail {
-//     write_slice2(roc_path, roc_string.as_str().as_bytes())
-// }
-#[no_mangle]
-pub extern "C" fn roc_fx_fileWriteUtf8(
-    roc_path: &RocList<u8>,
-    roc_str: &RocStr,
-) -> RocResult<(), WriteErr> {
-    write_slice(roc_path, roc_str.as_str().as_bytes())
-}
-
-#[no_mangle]
-pub extern "C" fn roc_fx_fileWriteBytes(
-    roc_path: &RocList<u8>,
-    roc_bytes: &RocList<u8>,
-) -> RocResult<(), WriteErr> {
-    write_slice(roc_path, roc_bytes.as_slice())
-}
-
-fn write_slice(roc_path: &RocList<u8>, bytes: &[u8]) -> RocResult<(), WriteErr> {
-    match File::create(path_from_roc_path(roc_path)) {
-        Ok(mut file) => match file.write_all(bytes) {
-            Ok(()) => RocResult::ok(()),
-            Err(err) => RocResult::err(toRocWriteError(err)),
-        },
-        Err(err) => RocResult::err(toRocWriteError(err)),
-    }
-}
-
-#[cfg(target_family = "unix")]
-fn path_from_roc_path(bytes: &RocList<u8>) -> Cow<'_, Path> {
-    use std::os::unix::ffi::OsStrExt;
-    let os_str = OsStr::from_bytes(bytes.as_slice());
-    Cow::Borrowed(Path::new(os_str))
-}
-
-#[cfg(target_family = "windows")]
-fn path_from_roc_path(bytes: &RocList<u8>) -> Cow<'_, Path> {
-    use std::os::windows::ffi::OsStringExt;
-
-    let bytes = bytes.as_slice();
-    assert_eq!(bytes.len() % 2, 0);
-    let characters: &[u16] =
-        unsafe { std::slice::from_raw_parts(bytes.as_ptr().cast(), bytes.len() / 2) };
-
-    let os_string = std::ffi::OsString::from_wide(characters);
-
-    Cow::Owned(std::path::PathBuf::from(os_string))
-}
-
-#[no_mangle]
-pub extern "C" fn roc_fx_fileReadBytes(roc_path: &RocList<u8>) -> RocResult<RocList<u8>, ReadErr> {
-    use std::io::Read;
-
-    let mut bytes = Vec::new();
-
-    match File::open(path_from_roc_path(roc_path)) {
-        Ok(mut file) => match file.read_to_end(&mut bytes) {
-            Ok(_bytes_read) => RocResult::ok(RocList::from(bytes.as_slice())),
-            Err(err) => {
-                RocResult::err(toRocReadError(err))
-            }
-        },
-        Err(err) => {
-            RocResult::err(toRocReadError(err))
-        }
-    }
-}
-
-#[no_mangle]
-pub extern "C" fn roc_fx_fileDelete(roc_path: &RocList<u8>) -> RocResult<(), ReadErr> {
-    match std::fs::remove_file(path_from_roc_path(roc_path)) {
-        Ok(()) => RocResult::ok(()),
-        Err(err) => {
-            RocResult::err(toRocReadError(err))
-        }
-    }
-}
-
-#[no_mangle]
-pub extern "C" fn roc_fx_cwd() -> RocList<u8> {
-    // TODO instead, call getcwd on UNIX and GetCurrentDirectory on Windows
-    match std::env::current_dir() {
-        Ok(path_buf) => os_str_to_roc_path(path_buf.into_os_string().as_os_str()),
-        Err(_) => {
-            // Default to empty path
-            RocList::empty()
-        }
-    }
-}
-
-#[no_mangle]
-pub extern "C" fn roc_fx_dirList(
-    // TODO: this RocResult should use Dir.WriteErr - but right now it's File.WriteErr
-    // because glue doesn't have Dir.WriteErr yet.
-    roc_path: &RocList<u8>,
-) -> RocResult<RocList<RocList<u8>>, WriteErr> {
-    println!("Dir.list...");
-    match std::fs::read_dir(path_from_roc_path(roc_path)) {
-        Ok(dir_entries) => RocResult::ok(
-            dir_entries
-                .map(|opt_dir_entry| match opt_dir_entry {
-                    Ok(entry) => os_str_to_roc_path(entry.path().into_os_string().as_os_str()),
-                    Err(_) => {
-                        todo!("handle dir_entry path didn't resolve")
-                    }
-                })
-                .collect::<RocList<RocList<u8>>>(),
-        ),
-        Err(err) => {
-            RocResult::err(toRocWriteError(err))
-        }
-    }
-}
-
-#[cfg(target_family = "unix")]
-fn os_str_to_roc_path(os_str: &OsStr) -> RocList<u8> {
-    use std::os::unix::ffi::OsStrExt;
-
-    RocList::from(os_str.as_bytes())
-}
-
-#[cfg(target_family = "windows")]
-fn os_str_to_roc_path(os_str: &OsStr) -> RocList<u8> {
-    use std::os::windows::ffi::OsStrExt;
-
-    let bytes: Vec<_> = os_str.encode_wide().flat_map(|c| c.to_be_bytes()).collect();
-
-    RocList::from(bytes.as_slice())
 }
 
 #[no_mangle]
@@ -677,43 +470,3 @@ pub extern "C" fn roc_fx_sendRequest(roc_request: &glue::Request) -> glue::Respo
     }
 }
 
-fn toRocWriteError(err : std::io::Error) -> file_glue::WriteErr {
-    match err.kind(){
-        std::io::ErrorKind::NotFound => file_glue::WriteErr::NotFound,
-        std::io::ErrorKind::AlreadyExists => file_glue::WriteErr::AlreadyExists,
-        std::io::ErrorKind::Interrupted => file_glue::WriteErr::Interrupted,
-        std::io::ErrorKind::OutOfMemory => file_glue::WriteErr::OutOfMemory,
-        std::io::ErrorKind::PermissionDenied => file_glue::WriteErr::PermissionDenied,
-        std::io::ErrorKind::TimedOut => file_glue::WriteErr::TimedOut,
-        // TODO investigate support the following IO errors may need to update API
-        std::io::ErrorKind::WriteZero => file_glue::WriteErr::WriteZero,
-        _ => file_glue::WriteErr::Unsupported,
-        // TODO investigate support the following IO errors
-        // std::io::ErrorKind::FileTooLarge <- unstable language feature 
-        // std::io::ErrorKind::ExecutableFileBusy <- unstable language feature 
-        // std::io::ErrorKind::FilesystemQuotaExceeded <- unstable language feature 
-        // std::io::ErrorKind::InvalidFilename <- unstable language feature 
-        // std::io::ErrorKind::ResourceBusy <- unstable language feature 
-        // std::io::ErrorKind::ReadOnlyFilesystem <- unstable language feature 
-        // std::io::ErrorKind::TooManyLinks <- unstable language feature
-        // std::io::ErrorKind::StaleNetworkFileHandle <- unstable language feature
-        // std::io::ErrorKind::StorageFull <- unstable language feature
-    }
-}
-
-fn toRocReadError(err : std::io::Error) -> file_glue::ReadErr {
-    match err.kind(){
-        std::io::ErrorKind::Interrupted => file_glue::ReadErr::Interrupted,
-        std::io::ErrorKind::NotFound => file_glue::ReadErr::NotFound,
-        std::io::ErrorKind::OutOfMemory => file_glue::ReadErr::OutOfMemory,
-        std::io::ErrorKind::PermissionDenied => file_glue::ReadErr::PermissionDenied,
-        std::io::ErrorKind::TimedOut => file_glue::ReadErr::TimedOut,
-        // TODO investigate support the following IO errors may need to update API
-        // std::io::ErrorKind:: => file_glue::ReadErr::TooManyHardlinks,
-        // std::io::ErrorKind:: => file_glue::ReadErr::TooManySymlinks,
-        // std::io::ErrorKind:: => file_glue::ReadErr::Unrecognized,
-        // std::io::ErrorKind::StaleNetworkFileHandle <- unstable language feature
-        // std::io::ErrorKind::InvalidFilename <- unstable language feature
-        _ => file_glue::ReadErr::Unsupported,
-    }
-}

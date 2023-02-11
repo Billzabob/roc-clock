@@ -2,36 +2,24 @@ hosted Effect
     exposes [
         Effect,
         after,
-        args,
         map,
         always,
         forever,
         loop,
-        dirList,
-        envDict,
-        envVar,
-        cwd,
-        setCwd,
         setPinHigh,
         setPinLow,
         pwm,
         writeBytes,
         readBytes,
         sleep,
-        exePath,
         stdoutLine,
         stdoutWrite,
         stderrLine,
         stderrWrite,
         stdinLine,
         sendRequest,
-        fileReadBytes,
-        fileDelete,
-        fileWriteUtf8,
-        fileWriteBytes,
-        processExit,
     ]
-    imports [InternalHttp.{ Request, Response }, InternalFile, InternalDir]
+    imports [InternalHttp.{ Request, Response }]
     generates Effect with [after, map, always, forever, loop]
 
 stdoutLine : Str -> Effect {}
@@ -40,30 +28,12 @@ stderrLine : Str -> Effect {}
 stderrWrite : Str -> Effect {}
 stdinLine : Effect Str
 
-fileWriteBytes : List U8, List U8 -> Effect (Result {} InternalFile.WriteErr)
-fileWriteUtf8 : List U8, Str -> Effect (Result {} InternalFile.WriteErr)
-fileDelete : List U8 -> Effect (Result {} InternalFile.WriteErr)
-fileReadBytes : List U8 -> Effect (Result (List U8) InternalFile.ReadErr)
-dirList : List U8 -> Effect (Result (List (List U8)) InternalDir.ReadErr)
-envDict : Effect (Dict Str Str)
-envVar : Str -> Effect (Result Str {})
-exePath : Effect (Result (List U8) {})
-setCwd : List U8 -> Effect (Result {} {})
-
 sleep : U64 -> Effect {}
-setPinHigh : U8 -> Effect (Result {} {})
-setPinLow : U8 -> Effect (Result {} {})
-pwm : F64, F64 -> Effect (Result {} {})
+setPinHigh : U8 -> Effect {}
+setPinLow : U8 -> Effect {}
+pwm : F64, F64 -> Effect {}
 
 writeBytes : U16, List U8 -> Effect {}
 readBytes : U16, Nat -> Effect (List U8)
-
-processExit : U8 -> Effect {}
-
-# If we encounter a Unicode error in any of the args, it will be replaced with
-# the Unicode replacement char where necessary.
-args : Effect (List Str)
-
-cwd : Effect (List U8)
 
 sendRequest : Box Request -> Effect Response

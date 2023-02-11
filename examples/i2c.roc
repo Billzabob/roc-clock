@@ -1,6 +1,6 @@
 app "i2c"
     packages { pf: "../src/main.roc" }
-    imports [pf.Gpio, pf.Stdout, pf.Stdin, pf.I2c, pf.Task.{ Task, await }]
+    imports [pf.Stdout, pf.Stdin, pf.I2c, pf.Task.{ Task, await }]
     provides [main] to pf
 
 address  = 0x0040
@@ -39,7 +39,7 @@ setPrescale = \value ->
     _ <- await sleep
     _ <- await (writeRegister prescale value)
     _ <- await wakeup
-    Gpio.sleep 5
+    Task.sleep 5
 
 readRegister = \register ->
     _     <- await (I2c.writeBytes address [register])
