@@ -1,3 +1,3 @@
-# basic-cli
+# pi-gpio-platform
 
-A basic [CLI](https://en.wikipedia.org/wiki/Command-line_interface) Roc Platform.
+A Roc platform for Raspberry Pi GPIO
