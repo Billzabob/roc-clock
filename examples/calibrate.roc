@@ -5,29 +5,36 @@ app "calibrate"
 
 addresses = [0x0040, 0x0041]
 offsets = [0, 8]
-pins = [0, 1, 2, 3, 4, 5, 6]
-pins1 = [0, 2, 3, 4]
+pins = List.range { start: At 0, end: Length 7 }
+#pins1 = [0, 2, 3, 4]
 
+main : Task {} []
 main =
     _ <- Task.attempt init
-    run
+    _ <- await run
+    Task.succeed {}
 
 init =
     _ <- await (Pca9685.reset)
+    address <- traverse addresses
     # About 50 Hz
-    # TODO traverse
-    _ <- await (Pca9685.setPrescale 0x0040 121)
-    _ <- await (Pca9685.setPrescale 0x0041 121)
-    Task.succeed {}
+    Pca9685.setPrescale address 121
 
-run =
-    address <- List.map addresses
-    offset <- List.map offsets
+segments : List { address : U16, pin : U8 }
+segments =
+    address <- List.joinMap addresses
+    offset <- List.joinMap offsets
     pin <- List.map pins
-    _ <- await (Stdout.line "Set the max")
-    _ <- await (Pca9685.setPinOffTicks address (pin + offset) 500)
-    Task.succeed {}
+    { address, pin: pin + offset }
 
+run : Task (List {}) []
+run =
+    segment <- traverse segments
+    _ <- await (Stdout.line "Set the max")
+    _ <- await (Pca9685.setPinOffTicks segment.address segment.pin 500)
+    setVal 500 segment.address segment.pin
+
+setVal : U16, U16, U8 -> Task {} []
 setVal = \value, address, pin ->
     _ <- await (Pca9685.setPinOffTicks address pin value)
     _ <- await (Stdout.line "How is this?")
@@ -39,9 +46,18 @@ setVal = \value, address, pin ->
         Stdout.line "Set address \(addressStr) and pin \(pinStr) to value: \(valueStr)"
     else
         when Str.toU16 a is
-            Ok v  -> setVal v address pin
-            Err _ -> setVal value address pin
-    
+            Ok _v -> Task.succeed {} # setVal v address pin
+            Err _ -> Task.succeed {} # setVal value address pin
 
-# count = map angle 0 180 145 500 |> Num.floor
+traverse : List a, (a -> Task b err) -> Task (List b) err
+traverse = \list, f ->
+    initialState = Task.succeed (List.withCapacity (List.len list))
+    walker = \task, elem -> map2 task (f elem) List.append
+    List.walk list initialState walker
+
+map2 : Task a err, Task b err, (a, b -> c) -> Task c err
+map2 = \task1, task2, f ->
+    a <- await task1
+    b <- await task2
+    Task.succeed (f a b)
 
