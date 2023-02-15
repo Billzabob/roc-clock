@@ -4,10 +4,12 @@ app "clock"
     provides [main] to pf
 
 addresses = [64, 65]
-digits = [{ address: 64, offset: 0 }, { address: 64, offset: 8 }] #, { address: 65, offset: 0 }, { address: 65, offset: 8 }]
+digits = [{ address: 65, offset: 0 }, { address: 65, offset: 8 }, { address: 64, offset: 0 }, { address: 64, offset: 8 }]
+segments = [6, 5, 4, 3, 2, 1, 0]
 
 main =
-    _ <- Task.await init
+    _ <- await init
+    _ <- await startup
     Task.forever run
 
 init =
@@ -17,8 +19,10 @@ init =
     Pca9685.setPrescale address 121
 
 run =
-    _ <- await (Stdout.line "Set 2 digit number:")
+    _ <- await (Stdout.line "Set 4 digit number:")
     n <- await Stdin.line
+    _ <- await empty
+    _ <- await (Task.sleep 1000)
     numbers = Str.graphemes n
     objects = numbers |> zip digits \num, d -> { value: num, digits: d }
     object <- traverse objects
@@ -30,6 +34,29 @@ setNumber = \address, offse, colors ->
     color <- traverse (List.mapWithIndex colors \segment, i -> { index: (offse + (Num.toU8 i)), segment })
     amount = getCalibration { address, pin: color.index, color: color.segment }
     Pca9685.setPinOffTicks address color.index amount
+
+startup =
+    _ <- await empty
+    _ <- await (Task.sleep 700)
+    startupSequence
+
+empty = 
+    segment <- traverse segments
+    digit <- traverse digits
+    pin = digit.offset + segment
+    amount = getCalibration { address: digit.address, pin, color: White }
+    Pca9685.setPinOffTicks digit.address pin amount
+
+startupSequence =
+    segment <- traverse segments
+    _ <- await (setSegmentForEachDigit segment)
+    Task.sleep 300
+
+setSegmentForEachDigit = \segment ->
+    { address, offset } <- traverse digits
+    pin = segment + offset
+    amount = getCalibration { address, pin, color: Black }
+    Pca9685.setPinOffTicks address pin amount
 
 getCalibration = \input ->
     when input is
@@ -61,6 +88,34 @@ getCalibration = \input ->
         { address: 64, pin: 13, color: White } -> 420
         { address: 64, pin: 14, color: Black } -> 230
         { address: 64, pin: 14, color: White } -> 420
+        { address: 65, pin: 0,  color: Black } -> 340
+        { address: 65, pin: 0,  color: White } -> 150
+        { address: 65, pin: 1,  color: Black } -> 180
+        { address: 65, pin: 1,  color: White } -> 350
+        { address: 65, pin: 2,  color: Black } -> 380
+        { address: 65, pin: 2,  color: White } -> 210
+        { address: 65, pin: 3,  color: Black } -> 370
+        { address: 65, pin: 3,  color: White } -> 180
+        { address: 65, pin: 4,  color: Black } -> 380
+        { address: 65, pin: 4,  color: White } -> 180
+        { address: 65, pin: 5,  color: Black } -> 190
+        { address: 65, pin: 5,  color: White } -> 370
+        { address: 65, pin: 6,  color: Black } -> 190
+        { address: 65, pin: 6,  color: White } -> 370
+        { address: 65, pin: 8,  color: Black } -> 380
+        { address: 65, pin: 8,  color: White } -> 200
+        { address: 65, pin: 9,  color: Black } -> 180
+        { address: 65, pin: 9,  color: White } -> 350
+        { address: 65, pin: 10, color: Black } -> 340
+        { address: 65, pin: 10, color: White } -> 170
+        { address: 65, pin: 11, color: Black } -> 320
+        { address: 65, pin: 11, color: White } -> 150
+        { address: 65, pin: 12, color: Black } -> 370
+        { address: 65, pin: 12, color: White } -> 200
+        { address: 65, pin: 13, color: Black } -> 170
+        { address: 65, pin: 13, color: White } -> 340
+        { address: 65, pin: 14, color: Black } -> 160
+        { address: 65, pin: 14, color: White } -> 340
         _ -> crash "No calibration"
 
 getSegments = \n ->
