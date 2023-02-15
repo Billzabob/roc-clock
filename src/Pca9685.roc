@@ -24,29 +24,31 @@ setPinOffTicks = \address, pin, ticks ->
     _ <- await (writeRegister address (register + 1) high)
     Task.succeed {}
 
-setPrescale : U16, U8 -> Task {} [OutOfBounds]
+setPrescale : U16, U8 -> Task {} []
 setPrescale = \address, value ->
     _ <- await (sleep address)
     _ <- await (writeRegister address prescale value)
     wakeup address
 
-readRegister : U16, U8 -> Task U8 [OutOfBounds]
+readRegister : U16, U8 -> Task U8 []
 readRegister = \address, register ->
     _     <- await (I2c.writeBytes address [register])
-    bytes <- await (I2c.readBytes address 1)
-    Task.fromResult (List.get bytes 0)
+    bytes <- Task.map (I2c.readBytes address 1)
+    when bytes is
+        [h, ..] -> h
+        _ -> 0
 
 writeRegister : U16, U8, U8 -> Task {} *
 writeRegister = \address, register, value ->
     I2c.writeBytes address [register, value]
 
-sleep : U16 -> Task {} [OutOfBounds]
+sleep : U16 -> Task {} []
 sleep = \address ->
     oldMode <- await (readRegister address mode1)
     newMode = Num.bitwiseOr oldMode sleepBit
     writeRegister address mode1 newMode
 
-wakeup : U16 -> Task {} [OutOfBounds]
+wakeup : U16 -> Task {} []
 wakeup = \address ->
     oldMode <- await (readRegister address mode1)
     newMode = sleepBit |> bitwiseNot |> Num.bitwiseAnd oldMode
