@@ -35,8 +35,8 @@ readRegister = \address, register ->
     _     <- await (I2c.writeBytes address [register])
     bytes <- Task.map (I2c.readBytes address 1)
     when bytes is
-        [h, ..] -> h
-        _ -> 0
+        [h] -> h
+        _ -> crash "Asked for 1 byte and didn't receive 1 byte in readRegister"
 
 writeRegister : U16, U8, U8 -> Task {} *
 writeRegister = \address, register, value ->

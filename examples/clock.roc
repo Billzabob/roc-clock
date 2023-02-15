@@ -3,7 +3,8 @@ app "clock"
     imports [pf.Stdout, pf.Stdin, pf.Pca9685, pf.Task.{ Task, await }]
     provides [main] to pf
 
-addresses = [0x0040, 0x0041]
+addresses = [64, 65]
+digits = [{ address: 64, offset: 0 }, { address: 64, offset: 8 }] #, { address: 65, offset: 0 }, { address: 65, offset: 8 }]
 
 main =
     _ <- Task.await init
@@ -16,57 +17,73 @@ init =
     Pca9685.setPrescale address 121
 
 run =
-    _ <- await (Stdout.line "Set number:")
+    _ <- await (Stdout.line "Set 2 digit number:")
     n <- await Stdin.line
-    v = getSegments n
-    setNumber 0x0040 0 v
+    numbers = Str.graphemes n
+    objects = numbers |> zip digits \num, d -> { value: num, digits: d }
+    object <- traverse objects
+    colors = getSegments object.value
+    setNumber object.digits.address object.digits.offset colors
 
-setNumber = \address, offset, segments ->
-    segment <- traverse (List.mapWithIndex segments \segment, index -> F (index + offset) segment)
-    when T address segment is
-        T 0x0040 (F 0 On) -> Pca9685.setPinOffTicks 0x0040 0 355
-        T 0x0040 (F 0 Off) -> Pca9685.setPinOffTicks 0x0040 0 170
-        T 0x0040 (F 1 On) -> Pca9685.setPinOffTicks 0x0040 1 190
-        T 0x0040 (F 1 Off) -> Pca9685.setPinOffTicks 0x0040 1 365
-        T 0x0040 (F 2 On) -> Pca9685.setPinOffTicks 0x0040 2 370
-        T 0x0040 (F 2 Off) -> Pca9685.setPinOffTicks 0x0040 2 180
-        T 0x0040 (F 3 On) -> Pca9685.setPinOffTicks 0x0040 3 390
-        T 0x0040 (F 3 Off) -> Pca9685.setPinOffTicks 0x0040 3 200
-        T 0x0040 (F 4 On) -> Pca9685.setPinOffTicks 0x0040 4 380
-        T 0x0040 (F 4 Off) -> Pca9685.setPinOffTicks 0x0040 4 190
-        T 0x0040 (F 5 On) -> Pca9685.setPinOffTicks 0x0040 5 190
-        T 0x0040 (F 5 Off) -> Pca9685.setPinOffTicks 0x0040 5 390
-        T 0x0040 (F 6 On) -> Pca9685.setPinOffTicks 0x0040 6 170
-        T 0x0040 (F 6 Off) -> Pca9685.setPinOffTicks 0x0040 6 360
-        T 0x0040 (F 8 On) -> Pca9685.setPinOffTicks 0x0040 8 430
-        T 0x0040 (F 8 Off) -> Pca9685.setPinOffTicks 0x0040 8 230
-        T 0x0040 (F 9 On) -> Pca9685.setPinOffTicks 0x0040 9 220
-        T 0x0040 (F 9 Off) -> Pca9685.setPinOffTicks 0x0040 9 400
-        T 0x0040 (F 10 On) -> Pca9685.setPinOffTicks 0x0040 10 400
-        T 0x0040 (F 10 Off) -> Pca9685.setPinOffTicks 0x0040 10 220
-        T 0x0040 (F 11 On) -> Pca9685.setPinOffTicks 0x0040 11 420
-        T 0x0040 (F 11 Off) -> Pca9685.setPinOffTicks 0x0040 11 230
-        T 0x0040 (F 12 On) -> Pca9685.setPinOffTicks 0x0040 12 390
-        T 0x0040 (F 12 Off) -> Pca9685.setPinOffTicks 0x0040 12 220
-        T 0x0040 (F 13 On) -> Pca9685.setPinOffTicks 0x0040 13 240
-        T 0x0040 (F 13 Off) -> Pca9685.setPinOffTicks 0x0040 13 420
-        T 0x0040 (F 14 On) -> Pca9685.setPinOffTicks 0x0040 14 230
-        T 0x0040 (F 14 Off) -> Pca9685.setPinOffTicks 0x0040 14 420
-        _ -> crash "Foo"
+setNumber : U16, U8, List [White, Black] -> Task (List {}) []
+setNumber = \address, offse, colors ->
+    color <- traverse (List.mapWithIndex colors \segment, i -> { index: (offse + (Num.toU8 i)), segment })
+    amount = getCalibration { address, pin: color.index, color: color.segment }
+    Pca9685.setPinOffTicks address color.index amount
+
+getCalibration = \input ->
+    when input is
+        { address: 64, pin: 0,  color: Black } -> 355
+        { address: 64, pin: 0,  color: White } -> 170
+        { address: 64, pin: 1,  color: Black } -> 190
+        { address: 64, pin: 1,  color: White } -> 365
+        { address: 64, pin: 2,  color: Black } -> 370
+        { address: 64, pin: 2,  color: White } -> 180
+        { address: 64, pin: 3,  color: Black } -> 390
+        { address: 64, pin: 3,  color: White } -> 200
+        { address: 64, pin: 4,  color: Black } -> 380
+        { address: 64, pin: 4,  color: White } -> 190
+        { address: 64, pin: 5,  color: Black } -> 190
+        { address: 64, pin: 5,  color: White } -> 390
+        { address: 64, pin: 6,  color: Black } -> 170
+        { address: 64, pin: 6,  color: White } -> 360
+        { address: 64, pin: 8,  color: Black } -> 430
+        { address: 64, pin: 8,  color: White } -> 230
+        { address: 64, pin: 9,  color: Black } -> 220
+        { address: 64, pin: 9,  color: White } -> 400
+        { address: 64, pin: 10, color: Black } -> 400
+        { address: 64, pin: 10, color: White } -> 220
+        { address: 64, pin: 11, color: Black } -> 420
+        { address: 64, pin: 11, color: White } -> 230
+        { address: 64, pin: 12, color: Black } -> 390
+        { address: 64, pin: 12, color: White } -> 220
+        { address: 64, pin: 13, color: Black } -> 240
+        { address: 64, pin: 13, color: White } -> 420
+        { address: 64, pin: 14, color: Black } -> 230
+        { address: 64, pin: 14, color: White } -> 420
+        _ -> crash "No calibration"
 
 getSegments = \n ->
     when n is
-        "0" -> [On, On, On, Off, On, On, On]
-        "1" -> [Off, Off, On, Off, Off, On, Off]
-        "2" -> [On, Off, On, On, On, Off, On]
-        "3" -> [On, Off, On, On, Off, On, On]
-        "4" -> [Off, On, On, On, Off, On, Off]
-        "5" -> [On, On, Off, On, Off, On, On]
-        "6" -> [On, On, Off, On, On, On, On]
-        "7" -> [On, Off, On, Off, Off, On, Off]
-        "8" -> [On, On, On, On, On, On, On]
-        "9" -> [On, On, On, On, Off, On, Off]
+        "0" -> [Black, Black, Black, White, Black, Black, Black]
+        "1" -> [White, White, Black, White, White, Black, White]
+        "2" -> [Black, White, Black, Black, Black, White, Black]
+        "3" -> [Black, White, Black, Black, White, Black, Black]
+        "4" -> [White, Black, Black, Black, White, Black, White]
+        "5" -> [Black, Black, White, Black, White, Black, Black]
+        "6" -> [Black, Black, White, Black, Black, Black, Black]
+        "7" -> [Black, White, Black, White, White, Black, White]
+        "8" -> [Black, Black, Black, Black, Black, Black, Black]
+        "9" -> [Black, Black, Black, Black, White, Black, White]
         _ -> crash "Invalid digit"
+
+zip : List a, List b, (a, b -> c) -> List c
+zip = \list1, list2, f ->
+    list1
+    |> List.mapWithIndex \a, i ->
+        when List.get list2 i is
+            Ok b -> f a b
+            Err OutOfBounds -> crash "Lists must be same length to zip"
 
 traverse : List a, (a -> Task b err) -> Task (List b) err
 traverse = \list, f ->
