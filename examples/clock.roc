@@ -29,9 +29,8 @@ run =
     colors = getSegments object.value
     setNumber object.digits.address object.digits.offset colors
 
-setNumber : U16, U8, List [White, Black] -> Task (List {}) []
-setNumber = \address, offse, colors ->
-    color <- traverse (List.mapWithIndex colors \segment, i -> { index: (offse + (Num.toU8 i)), segment })
+setNumber = \address, offset, colors ->
+    color <- traverse (List.mapWithIndex colors \segment, i -> { index: (offset + (Num.toU8 i)), segment })
     amount = getCalibration { address, pin: color.index, color: color.segment }
     Pca9685.setPinOffTicks address color.index amount
 
@@ -40,7 +39,7 @@ startup =
     _ <- await (Task.sleep 700)
     startupSequence
 
-empty = 
+empty =
     segment <- traverse segments
     digit <- traverse digits
     pin = digit.offset + segment
