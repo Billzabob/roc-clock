@@ -24,7 +24,7 @@ run =
     _ <- await empty
     _ <- await (Task.sleep 1000)
     numbers = Str.graphemes n
-    objects = numbers |> zip digits \num, d -> { value: num, digits: d }
+    objects = numbers |> List.map2 digits \num, d -> { value: num, digits: d }
     object <- traverse objects
     colors = getSegments object.value
     setNumber object.digits.address object.digits.offset colors
@@ -130,14 +130,6 @@ getSegments = \n ->
         "8" -> [Black, Black, Black, Black, Black, Black, Black]
         "9" -> [Black, Black, Black, Black, White, Black, White]
         _ -> crash "Invalid digit"
-
-zip : List a, List b, (a, b -> c) -> List c
-zip = \list1, list2, f ->
-    list1
-    |> List.mapWithIndex \a, i ->
-        when List.get list2 i is
-            Ok b -> f a b
-            Err OutOfBounds -> crash "Lists must be same length to zip"
 
 traverse : List a, (a -> Task b err) -> Task (List b) err
 traverse = \list, f ->
