@@ -5,7 +5,7 @@ app "clock"
 
 addresses = [64, 65]
 digits = [{ address: 65, offset: 0 }, { address: 65, offset: 8 }, { address: 64, offset: 0 }, { address: 64, offset: 8 }]
-segments = [6, 5, 4, 3, 2, 1, 0]
+segments = { start: At 0, end: Length 7 } |> List.range |> List.reverse
 
 main =
     _ <- await init
@@ -15,7 +15,7 @@ main =
 init =
     _ <- await (Pca9685.reset)
     # About 50 Hz
-    address <- traverse addresses
+    address <- Task.traverse addresses
     Pca9685.setPrescale address 121
 
 run =
@@ -25,12 +25,12 @@ run =
     _ <- await (Task.sleep 1000)
     numbers = Str.graphemes n
     objects = numbers |> List.map2 digits \num, d -> { value: num, digits: d }
-    object <- traverse objects
+    object <- Task.traverse objects
     colors = getSegments object.value
     setNumber object.digits.address object.digits.offset colors
 
 setNumber = \address, offset, colors ->
-    color <- traverse (List.mapWithIndex colors \segment, i -> { index: (offset + (Num.toU8 i)), segment })
+    color <- Task.traverse (List.mapWithIndex colors \segment, i -> { index: (offset + (Num.toU8 i)), segment })
     amount = getCalibration { address, pin: color.index, color: color.segment }
     Pca9685.setPinOffTicks address color.index amount
 
@@ -40,21 +40,18 @@ startup =
     startupSequence
 
 empty =
-    segment <- traverse segments
-    digit <- traverse digits
-    pin = digit.offset + segment
-    amount = getCalibration { address: digit.address, pin, color: White }
-    Pca9685.setPinOffTicks digit.address pin amount
+    segment <- Task.traverse segments
+    setSegmentForEachDigit segment White
 
 startupSequence =
-    segment <- traverse segments
-    _ <- await (setSegmentForEachDigit segment)
+    segment <- Task.traverse segments
+    _ <- await (setSegmentForEachDigit segment Black)
     Task.sleep 300
 
-setSegmentForEachDigit = \segment ->
-    { address, offset } <- traverse digits
+setSegmentForEachDigit = \segment, color ->
+    { address, offset } <- Task.traverse digits
     pin = segment + offset
-    amount = getCalibration { address, pin, color: Black }
+    amount = getCalibration { address, pin, color }
     Pca9685.setPinOffTicks address pin amount
 
 getCalibration = \input ->
@@ -130,16 +127,4 @@ getSegments = \n ->
         "8" -> [Black, Black, Black, Black, Black, Black, Black]
         "9" -> [Black, Black, Black, Black, White, Black, White]
         _ -> crash "Invalid digit"
-
-traverse : List a, (a -> Task b err) -> Task (List b) err
-traverse = \list, f ->
-    initialState = Task.succeed (List.withCapacity (List.len list))
-    walker = \task, elem -> map2 task (f elem) List.append
-    List.walk list initialState walker
-
-map2 : Task a err, Task b err, (a, b -> c) -> Task c err
-map2 = \task1, task2, f ->
-    a <- await task1
-    b <- await task2
-    Task.succeed (f a b)
 

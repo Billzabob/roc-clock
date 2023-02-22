@@ -1,5 +1,5 @@
 interface Task
-    exposes [Task, sleep, succeed, fail, await, map, mapFail, onFail, attempt, forever, loop, fromResult]
+    exposes [Task, sleep, succeed, fail, await, map, mapFail, onFail, attempt, forever, loop, fromResult, traverse, map2]
     imports [Effect, InternalTask]
 
 Task ok err : InternalTask.Task ok err
@@ -106,3 +106,15 @@ fromResult = \result ->
     when result is
         Ok ok -> succeed ok
         Err err -> fail err
+
+traverse : List a, (a -> Task b err) -> Task (List b) err
+traverse = \list, f ->
+    initialState = list |> List.len |> List.withCapacity |> Task.succeed
+    walker = \task, elem -> map2 task (f elem) List.append
+    List.walk list initialState walker
+
+map2 : Task a err, Task b err, (a, b -> c) -> Task c err
+map2 = \task1, task2, f ->
+    a <- await task1
+    b <- await task2
+    Task.succeed (f a b)
