@@ -4,7 +4,7 @@ app "clock"
     provides [main] to pf
 
 addresses = [64, 65]
-digits = [{ address: 65, offset: 0 }, { address: 65, offset: 8 }, { address: 64, offset: 0 }, { address: 64, offset: 8 }]
+pins = [{ address: 65, offset: 0 }, { address: 65, offset: 8 }, { address: 64, offset: 0 }, { address: 64, offset: 8 }]
 segments = { start: At 0, end: Length 7 } |> List.range |> List.reverse
 
 main =
@@ -22,12 +22,12 @@ run =
     _ <- await (Stdout.line "Set 4 digit number:")
     n <- await Stdin.line
     _ <- await empty
-    _ <- await (Task.sleep 1000)
+    _ <- await (Task.sleep 700)
     numbers = Str.graphemes n
-    objects = numbers |> List.map2 digits \num, d -> { value: num, digits: d }
-    object <- Task.traverse objects
-    colors = getSegments object.value
-    setNumber object.digits.address object.digits.offset colors
+    updates = numbers |> List.map2 pins \number, pin -> { number, pin }
+    { number, pin } <- Task.traverse updates
+    colors = getSegments number
+    setNumber pin.address pin.offset colors
 
 setNumber = \address, offset, colors ->
     color <- Task.traverse (List.mapWithIndex colors \segment, i -> { index: (offset + (Num.toU8 i)), segment })
@@ -49,7 +49,7 @@ startupSequence =
     Task.sleep 300
 
 setSegmentForEachDigit = \segment, color ->
-    { address, offset } <- Task.traverse digits
+    { address, offset } <- Task.traverse pins
     pin = segment + offset
     amount = getCalibration { address, pin, color }
     Pca9685.setPinOffTicks address pin amount
