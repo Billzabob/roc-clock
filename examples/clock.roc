@@ -10,7 +10,7 @@ segments = { start: At 0, end: Length 7 } |> List.range |> List.reverse
 main =
     _ <- await init
     _ <- await startup
-    Task.forever run
+    Task.loop ["8", "8", "8", "8"] run
 
 init =
     _ <- await (Pca9685.reset)
@@ -18,16 +18,41 @@ init =
     address <- Task.traverse addresses
     Pca9685.setPrescale address 121
 
-run =
+run = \lastNumbers ->
     _ <- await (Stdout.line "Set 4 digit number:")
     n <- await Stdin.line
-    _ <- await empty
-    _ <- await (Task.sleep 700)
     numbers = Str.graphemes n
-    updates = numbers |> List.map2 pins \number, pin -> { number, pin }
+    _ <- await (setClock lastNumbers numbers)
+    Task.succeed (Step numbers)
+
+setClock = \lastNumbers, numbers ->
+    updates = numbers |> List.map3 lastNumbers pins \number, lastNumber, pin -> { number, lastNumber, pin }
     { number, pin } <- Task.traverse updates
     colors = getSegments number
     setNumber pin.address pin.offset colors
+
+#checkCollision = \lastNumber, number ->
+#    collisions = [
+#        T "1" "2",
+#        T "2" "0",
+#        T "2" "1",
+#        T "3" "0",
+#        T "5" "0",
+#        # Not positive this is a collision
+#        T "6" "7",
+#        T "7" "8",
+#        T "9" "0"
+#    ]
+#    if List.contains collisions (T lastNumber number) then Collision else NoCollision
+
+#avoidCollision = \{ address, offset } ->
+#    amount1 = getCalibration { address, pin: offset + 1, color: Black }
+#    amount2 = getCalibration { address, pin: offset + 1, color: White }
+#    amount3 = getCalibration { address, pin: offset + 2, color: Black }
+#    amount4 = getCalibration { address, pin: offset + 2, color: White }
+#    _ <- await (Pca9685.setPinOffTicks address (offset + 1) ((amount1 + amount2) // 2))
+#    _ <- await (Pca9685.setPinOffTicks address (offset + 2) ((amount3 + amount4) // 2))
+#    Task.succeed {}
 
 setNumber = \address, offset, colors ->
     color <- Task.traverse (List.mapWithIndex colors \segment, i -> { index: (offset + (Num.toU8 i)), segment })
