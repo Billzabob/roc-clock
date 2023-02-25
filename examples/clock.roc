@@ -27,32 +27,46 @@ run = \lastNumbers ->
 
 setClock = \lastNumbers, numbers ->
     updates = numbers |> List.map3 lastNumbers pins \number, lastNumber, pin -> { number, lastNumber, pin }
+    collisions <- await (handleCollisions updates)
+    _ <- await (if List.any collisions \collision -> collision == Collision then Task.sleep 300 else Task.succeed {})
+    _ <- await (setNumbers updates)
+    Task.succeed {}
+
+handleCollisions = \updates ->
+    { number, lastNumber, pin } <- Task.traverse updates
+    if checkCollision lastNumber number then
+        _ <- await (avoidCollision pin)
+        Task.succeed Collision
+    else
+        Task.succeed NoCollision
+
+setNumbers = \updates ->
     { number, pin } <- Task.traverse updates
     colors = getSegments number
     setNumber pin.address pin.offset colors
 
-#checkCollision = \lastNumber, number ->
-#    collisions = [
-#        T "1" "2",
-#        T "2" "0",
-#        T "2" "1",
-#        T "3" "0",
-#        T "5" "0",
-#        # Not positive this is a collision
-#        T "6" "7",
-#        T "7" "8",
-#        T "9" "0"
-#    ]
-#    if List.contains collisions (T lastNumber number) then Collision else NoCollision
 
-#avoidCollision = \{ address, offset } ->
-#    amount1 = getCalibration { address, pin: offset + 1, color: Black }
-#    amount2 = getCalibration { address, pin: offset + 1, color: White }
-#    amount3 = getCalibration { address, pin: offset + 2, color: Black }
-#    amount4 = getCalibration { address, pin: offset + 2, color: White }
-#    _ <- await (Pca9685.setPinOffTicks address (offset + 1) ((amount1 + amount2) // 2))
-#    _ <- await (Pca9685.setPinOffTicks address (offset + 2) ((amount3 + amount4) // 2))
-#    Task.succeed {}
+checkCollision = \lastNumber, number ->
+    collisions = [
+        T "1" "2",
+        T "2" "0",
+        T "2" "1",
+        T "3" "0",
+        T "5" "0",
+        T "7" "8",
+        T "8" "0",
+        T "8" "1",
+        T "8" "7",
+        T "9" "0"
+    ]
+    List.contains collisions (T lastNumber number)
+
+avoidCollision = \{ address, offset } ->
+    amount1 = getCalibration { address, pin: offset + 1, color: White }
+    amount2 = getCalibration { address, pin: offset + 2, color: White }
+    _ <- await (Pca9685.setPinOffTicks address (offset + 1) amount1)
+    _ <- await (Pca9685.setPinOffTicks address (offset + 2) amount2)
+    Task.succeed {}
 
 setNumber = \address, offset, colors ->
     color <- Task.traverse (List.mapWithIndex colors \segment, i -> { index: (offset + (Num.toU8 i)), segment })
