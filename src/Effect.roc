@@ -9,6 +9,7 @@ hosted Effect
         setPinHigh,
         setPinLow,
         pwm,
+        getTime,
         writeBytes,
         readBytes,
         sleep,
@@ -28,6 +29,7 @@ stderrLine : Str -> Effect {}
 stderrWrite : Str -> Effect {}
 stdinLine : Effect Str
 
+getTime : Effect Str
 sleep : U64 -> Effect {}
 setPinHigh : U8 -> Effect {}
 setPinLow : U8 -> Effect {}

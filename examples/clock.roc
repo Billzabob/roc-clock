@@ -1,6 +1,6 @@
 app "clock"
     packages { pf: "../src/main.roc" }
-    imports [pf.Stdout, pf.Stdin, pf.Pca9685, pf.Task.{ Task, await }]
+    imports [pf.Time, pf.Pca9685, pf.Task.{ Task, await }]
     provides [main] to pf
 
 addresses = [64, 65]
@@ -19,8 +19,8 @@ init =
     Pca9685.setPrescale address 121
 
 run = \lastNumbers ->
-    _ <- await (Stdout.line "Set 4 digit number:")
-    n <- await Stdin.line
+    _ <- await (Task.sleep 1000)
+    n <- await Time.getTime
     numbers = Str.graphemes n
     _ <- await (setClock lastNumbers numbers)
     Task.succeed (Step numbers)

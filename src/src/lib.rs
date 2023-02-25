@@ -291,6 +291,19 @@ pub extern "C" fn roc_fx_pwm(frequency: f64, duty_cycle: f64) {
 }
 
 #[no_mangle]
+pub extern "C" fn roc_fx_getTime() -> RocStr {
+    use chrono::{Duration, Timelike, Utc};
+    use std::ops::Sub;
+
+    let now = Utc::now().sub(Duration::hours(7));
+    let hour = now.hour();
+    let minute = now.minute();
+    let time = format!("{:02}{:02}", hour, minute);
+
+    RocStr::from(time.as_str())
+}
+
+#[no_mangle]
 pub extern "C" fn roc_fx_writeBytes(address: u16, bytes: &RocList<u8>) {
     use rppal::i2c::I2c;
 

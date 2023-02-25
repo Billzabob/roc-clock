@@ -26,5 +26,6 @@ libc = "0.2"
 backtrace = "0.3"
 reqwest = { version="0.11.11", default-features=false, features=["blocking", "rustls-tls"] }
 rppal = "0.14.1"
+chrono = "0.4.23"
 
 [workspace]
